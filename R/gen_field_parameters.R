@@ -1,3 +1,23 @@
+# /*===========================================================
+#' # Generate field parameters for quadratic plateau production function
+# /*===========================================================
+gen_field_parameters <- function(field_with_design, nsim = 1000) {
+  field_parameters <-
+    field_with_design %>%
+    mutate(field_pars = list(
+      gen_field_pars(
+        sp_range = sp_range,
+        gstat_model = gstat_model,
+        field_sf = field_sf,
+        nsim = nsim
+      )
+    ))
+  return(field_parameters)
+}
+
+# /*+++++++++++++++++++++++++++++++++++
+#' ## Supporting functions
+# /*+++++++++++++++++++++++++++++++++++
 #* Generate a complete set of variable:
 #* Plateau, Nk, b0, b1, b2, yeld error, application error
 
@@ -27,29 +47,14 @@ gen_field_pars <- function(sp_range, gstat_model, field_sf, nsim) {
     .[, sd_b := sd(Nk), by = sim] %>%
     .[, mean_b := mean(Nk), by = sim] %>%
     .[, p := pnorm(Nk, mean = mean_b, sd = sd_b)] %>%
-    .[, Nk := 100 + p * 150] %>%
+    .[, Nk := 75 + p * 150] %>%
+    #--- add some fluctuations across fields ---#
+    .[, Nk_rand := 50 * runif(1), by = sim] %>%
+    .[, Nk := Nk + Nk_rand] %>%
     .[, c("cell_id", "sim", "Nk")]
 
   # Nk$Nk %>% hist(breaks=100)cell
   # rasterFromXYZ(Nk[sim==1, c("X","Y","Nk")]) %>% plot()
-
-  # === ymax ===#
-  ymax_data <-
-    gen_pars(
-      mean = 10000,
-      psill = 3000000,
-      range = sp_range,
-      coef_name = "ymax",
-      gstat_model = gstat_model,
-      xy = xy,
-      nsim = nsim
-    ) %>%
-    # >>> normalize <<<
-    .[, sd_b := sd(ymax), by = sim] %>%
-    .[, mean_b := mean(ymax), by = sim] %>%
-    .[, p := pnorm(ymax, mean = mean_b, sd = sd_b)] %>%
-    .[, ymax := 8000 + p * 8000] %>%
-    .[, c("cell_id", "sim", "ymax")]
 
   # ymax$ymax %>% hist(breaks=100)
   # rasterFromXYZ(ymax[sim==1, c("X","Y","ymax")]) %>% plot()
@@ -69,8 +74,39 @@ gen_field_pars <- function(sp_range, gstat_model, field_sf, nsim) {
     .[, sd_b := sd(b0), by = sim] %>%
     .[, mean_b := mean(b0), by = sim] %>%
     .[, p := pnorm(b0, mean = mean_b, sd = sd_b)] %>%
-    .[, b0 := 3000 + p * 4000] %>%
+    .[, b0 := 5000 + p * 5000] %>%
     .[, c("cell_id", "sim", "b0")]
+
+  Nk_b0_data <- b0_data[Nk_data, on = c("cell_id", "sim")]
+
+  # === ymax - b0 ===#
+  # How much yield gain beyond b0
+  ymax_b0_data <-
+    gen_pars(
+      mean = 10000,
+      psill = 3000000,
+      range = sp_range,
+      coef_name = "ymax_less_b0",
+      gstat_model = gstat_model,
+      xy = xy,
+      nsim = nsim
+    ) %>%
+    # >>> normalize <<<
+    .[, sd_b := sd(ymax_less_b0), by = sim] %>%
+    .[, mean_b := mean(ymax_less_b0), by = sim] %>%
+    .[, p := pnorm(ymax_less_b0, mean = mean_b, sd = sd_b)] %>%
+    .[, ymax_less_b0 := 4000 + p * 5000] %>%
+    .[, c("cell_id", "sim", "ymax_less_b0")]
+
+  Nk_b0_ymax_data <-
+    ymax_b0_data[Nk_b0_data, on = c("cell_id", "sim")] %>%
+    #--- calculate ymax ---#
+    .[, ymax := b0 + ymax_less_b0] %>%
+    #--- find the effectiveness of N ---#
+    .[, growth_rate := ymax_less_b0 / Nk] %>%
+    #--- if Nk too effective, limit the growth rate ---#
+    .[growth_rate > 90, ymax := Nk * 90 + b0] %>%
+    .[, .(cell_id, sim, b0, Nk, ymax)]
 
   N_error_data <-
     gen_pars(
@@ -108,16 +144,13 @@ gen_field_pars <- function(sp_range, gstat_model, field_sf, nsim) {
 
   # === b1, b2 ===#
   cell_data <-
-    Nk_data %>%
-    .[ymax_data, on = c("sim", "cell_id")] %>%
-    .[b0_data, on = c("sim", "cell_id")] %>%
+    Nk_b0_ymax_data %>%
     # === derive b1, b2 from b0, ymax, and Nk
     .[, b1 := (-2) * (b0 - ymax) / Nk] %>%
     .[, b2 := (b0 - ymax) / Nk^2] %>%
     setnames("ymax", "plateau") %>%
     .[m_error_data, on = c("sim", "cell_id")] %>%
     .[N_error_data, on = c("sim", "cell_id")]
-
 
   # /*+++++++++++++++++++++++++++++++++++
   #' ## Splitting parameters
@@ -202,4 +235,78 @@ gen_field_pars <- function(sp_range, gstat_model, field_sf, nsim) {
     add_errors_to_par("b2_2", scaler = 2, "theta_b2_2", ., nsim, xy, sp_range, gstat_model)[., on = c("sim", "cell_id")]
 
   return(cell_data)
+}
+
+
+
+split_par_additive <- function(par_name, cell_data, nsim, xy, sp_range, gstat_model) {
+  vars <- c(par_name, "sim", "cell_id")
+  temp_data <-
+    data.table(cell_data)[, ..vars] %>%
+    setnames(par_name, "w_var")
+
+  return_data <-
+    gen_pars(
+      mean = 0,
+      psill = 1,
+      range = sp_range,
+      coef_name = "temp_var",
+      gstat_model = gstat_model,
+      xy = xy,
+      nsim = nsim
+    ) %>%
+    # >>> normalize <<<
+    .[, min_temp_var := min(temp_var), by = sim] %>%
+    .[, max_temp_var := max(temp_var), by = sim] %>%
+    .[, split_ratio := punif(temp_var, min_temp_var, max_temp_var)] %>%
+    .[temp_data, on = c("sim", "cell_id")] %>%
+    .[, `:=`(
+      w_var_1 = w_var * split_ratio,
+      w_var_2 = w_var * (1 - split_ratio)
+    )] %>%
+    .[, .(sim, cell_id, w_var_1, w_var_2)] %>%
+    setnames(
+      c("w_var_1", "w_var_2"),
+      paste0(par_name, "_", c(1, 2))
+    )
+
+  return(return_data)
+}
+
+split_par_min <- function(par_name, cell_data, nsim, xy, sp_range, gstat_model) {
+  vars <- c(par_name, "sim", "cell_id")
+  temp_data <-
+    data.table(cell_data)[, ..vars] %>%
+    setnames(par_name, "w_var")
+
+
+  split_factor <-
+    gen_pars(
+      mean = 0,
+      psill = 1,
+      range = sp_range,
+      coef_name = "temp_var",
+      gstat_model = gstat_model,
+      xy = xy,
+      nsim = nsim
+    ) %>%
+    # >>> normalize <<<
+    .[, min_temp_var := min(temp_var), by = sim] %>%
+    .[, max_temp_var := max(temp_var), by = sim] %>%
+    .[, temp_var := punif(temp_var, min_temp_var, max_temp_var) * 2] %>%
+    .[, temp_var_slack := pmax(1 - temp_var, 0)] %>%
+    .[, c("cell_id", "sim", "temp_var", "temp_var_slack")]
+
+  return_data <-
+    split_factor[temp_data, on = c("sim", "cell_id")] %>%
+    .[, w_var_1 := w_var * temp_var] %>%
+    .[w_var_1 < w_var, w_var_1 := w_var] %>%
+    .[, w_var_2 := fifelse(w_var_1 > w_var, w_var, w_var * (1 + temp_var_slack))] %>%
+    .[, .(sim, cell_id, w_var_1, w_var_2)] %>%
+    setnames(
+      c("w_var_1", "w_var_2"),
+      paste0(par_name, "_", c(1, 2))
+    )
+
+  return(return_data)
 }

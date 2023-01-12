@@ -344,117 +344,11 @@ gen_plot_block_ids <- function(field_sf, plot_length, plot_width, cols_plot_in_b
   return(plot_block_id_data)
 }
 
-gen_reg_data <- function(field_pars, field_sf, design_name) {
-
-  # === load cell level data (coef, error) ===#
-  field <- data.table(field_sf)
-
-  # /*+++++++++++++++++++++++++++++++++++
-  #' # Define the levels of experimental input rate by simulation id
-  # /*+++++++++++++++++++++++++++++++++++
-  N_levels_data <-
-    field_pars[, .(sim, Nk)] %>%
-    .[Nk > 300, Nk := 300] %>%
-    .[, .(N_levels = list(
-      seq(
-        quantile(Nk, prob = 0.05),
-        quantile(Nk, prob = 0.95),
-        length = 5
-      ) %>%
-        pmax(0, .) %>%
-        round()
-    )), by = sim]
-
-  # /*+++++++++++++++++++++++++++++++++++
-  #' # Assign input rate
-  # /*+++++++++++++++++++++++++++++++++++
-  #* the number of blocks
-  block_num <- unique(field$block_id) %>% length()
-
-  #* assign N rates
-  n_assign_data <-
-    lapply(
-      field_pars[, sim] %>% unique(),
-      function(x) {
-
-        #* find the N_levels for the sim
-        N_levels <- N_levels_data[sim == x, N_levels][[1]]
-
-        #* assign N rates
-        assign_input_rate(
-          N_levels = N_levels,
-          block_num = block_num,
-          design = design_name
-        ) %>%
-          .[, sim := x]
-      }
-    ) %>%
-    rbindlist()
-
-  vars_to_summarize <-
-    names(field_pars) %>%
-    .[!(. %in% c("sim", "cell_id", "m_error", "N_error"))] %>%
-    c(., c("yield", "N", "X", "Y", "N_tgt"))
-
-  reg_data <-
-    field[field_pars, on = "cell_id"] %>%
-    n_assign_data[., on = c("sim", "block_id", "plot_in_block_id")] %>%
-    #* add cell-level N application noise to target N
-    .[, meidan_det_N := median(N_tgt), by = sim] %>%
-    .[, N := N_tgt + meidan_det_N * N_error] %>%
-    .[N < 0, N := 0] %>%
-    #* deterministic yield
-    .[, det_yield := gen_yield_QP(b0, b1, b2, Nk, N)] %>%
-    #* create yield errors
-    .[, mean_det_yield := mean(det_yield), by = sim] %>%
-    .[, yield_error := mean_det_yield * m_error] %>%
-    .[, yield := det_yield + yield_error] %>%
-    #* remove observations in the buffer zone
-    .[buffer == 0, ] %>%
-    #* aggregate the data by analysis unit
-    .[,
-      lapply(.SD, mean),
-      by = .(sim, aunit_id, block_id),
-      .SDcols = vars_to_summarize
-    ] %>%
-    .[, N2 := N^2] %>%
-    nest_by_dt(by = "sim") %>%
-    N_levels_data[., on = "sim"]
-
-  return(reg_data)
-}
-
-gen_weights_matrix <- function(reg_data, cutoff) {
-
-  # === load regression data ===#
-  dt <- reg_data$data[[1]]
-
-  # === distance matrix ===#
-  D <- matrix(NA, nrow(dt), nrow(dt))
-  for (i in 1:nrow(dt)) {
-    for (j in 1:nrow(dt)) {
-      D[i, j] <- sqrt((dt$X[i] - dt$X[j])^2 +
-        (dt$Y[i] - dt$Y[j])^2)
-    }
-  }
-
-  # === inverse distance weights matrix ===#
-  W <- 1 / D^2 # inverse distance
-  W[D > cutoff] <- 0 # cut off distance
-  diag(W) <- 0
-  W <- W / rowSums(W) # row-standardize
-  Wls <- mat2listw(W) # "listw" object
-
-  return(Wls)
-}
-
-
 # === Quadratic-Plateau response
 gen_yield_QP <- function(b0, b1, b2, Nk, N) {
   yield <- (N < Nk) * (b0 + b1 * N + b2 * N^2) + (N >= Nk) * (b0 + b1 * Nk + b2 * Nk^2)
   return(yield)
 }
-
 
 # === Quadratic response
 gen_yield_QD <- function(b0, b1, b2, N) {
@@ -464,31 +358,9 @@ gen_yield_QD <- function(b0, b1, b2, N) {
 
 
 
-make_design_layout <- function(plot_length, field_col) {
-  design_layout_table <-
-    tribble(
-      ~design_name, ~plot_length, ~cols_plot_in_block, ~rows_plot_in_block,
-      "Latin Square Fixed 5", plot_length, 5, 5,
-      "Latin Square Fixed", plot_length, 6, 6,
-      "Latin Square Random", plot_length, 6, 6,
-      "Latin Square Cascade", plot_length, 6, 6,
-      "Alternate Block", plot_length, 3, 6,
-      "Checkerboard", plot_length, 2, 3,
-      "Randomized Block", plot_length, 2, 3,
-      "Completely Random", plot_length, 1, 1,
-      "Fixed Strip Grad", field_col, 1, 12,
-      "Fixed Strip Fluc 1", field_col, 1, 6,
-      "Fixed Strip Fluc 2", field_col, 1, 6,
-      "Random Strip", field_col, 1, 6,
-      "Cascade Plot", plot_length, 12, 12,
-      "Wave", plot_length, 10, 10,
-    ) %>%
-    data.table()
-
-  return(design_layout_table)
-}
-
-
+# /*===========================================================
+#' # Generate fields
+# /*===========================================================
 make_field <- function(field_col, field_row, aunit_length, aunit_width, cell, cell_buffer) {
 
   #* field dimensions in meter
@@ -527,6 +399,84 @@ make_field <- function(field_col, field_row, aunit_length, aunit_width, cell, ce
     return(field_sf)
 }
 
+# /*===========================================================
+#' # Utility
+# /*===========================================================
 nest_by_dt <- function(dt, by) {
   dt[, .(data = list(.SD)), by = by]
+}
+
+# /*===========================================================
+#' # Trial Design
+# /*===========================================================
+make_design_layout <- function(plot_length, field_col) {
+  design_layout_table <-
+    tribble(
+      ~design_name, ~plot_length, ~cols_plot_in_block, ~rows_plot_in_block,
+      "Latin Square Fixed 5", plot_length, 5, 5,
+      "Latin Square Fixed 6", plot_length, 6, 6,
+      "Latin Square Random", plot_length, 6, 6,
+      "Latin Square Cascade", plot_length, 6, 6,
+      "Alternate Block", plot_length, 3, 6,
+      "Checkerboard", plot_length, 2, 3,
+      "Randomized Block", plot_length, 2, 3,
+      "Completely Random", plot_length, 1, 1,
+      "Fixed Strip Grad", field_col, 1, 12,
+      "Fixed Strip Fluc 1", field_col, 1, 6,
+      "Fixed Strip Fluc 2", field_col, 1, 6,
+      "Random Strip", field_col, 1, 6,
+      "Cascade Plot", plot_length, 12, 12,
+      "Wave", plot_length, 10, 10,
+    ) %>%
+    data.table()
+
+  return(design_layout_table)
+}
+
+# /*+++++++++++++++++++++++++++++++++++
+#' # Generate ids for aunit
+# /*+++++++++++++++++++++++++++++++++++
+#' cell: basic unit
+#' aunit: unit of data analysis (buffer zone included)
+
+gen_aunit_ids <- function(field_sf, aunit_length, aunit_width) {
+  f <- data.table(field_sf) %>%
+    # === analysis unit ids ===#
+    .[, aunit_row_id := ceiling(row_id / aunit_width)] %>%
+    .[, aunit_col_id := ceiling((col_id + cell_buffer) / aunit_length)] %>%
+    .[, total_cols := max(aunit_col_id)] %>%
+    .[, aunit_id := aunit_col_id + (aunit_row_id - 1) * total_cols] %>%
+    # === keep columns ===#
+    .[, .(cell_id, aunit_id)] %>%
+    # === join with the field sf data ===#
+    left_join(field_sf, ., by = "cell_id")
+
+  return(f)
+}
+
+scale_data <- function(data, scale_data, back = FALSE) {
+  scaled_data <-
+    lapply(
+      names(data),
+      function(x) {
+        scaler <- data.table(scale_data)[variable == x, scaler]
+
+        if (back == FALSE) {
+          if (length(scaler) == 1) { # scale
+            data[, ..x] * scaler
+          } else { # do not scale
+            data[, ..x]
+          }
+        } else {
+          if (length(scaler) == 1) { # scale
+            data[, ..x] / scaler
+          } else { # do not scale
+            data[, ..x]
+          }
+        }
+      }
+    ) %>%
+    reduce(cbind)
+
+  return(scaled_data)
 }
