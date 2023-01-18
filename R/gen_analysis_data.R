@@ -1,6 +1,10 @@
 # /*===========================================================
 #' # Generate analysis-ready data
 # /*===========================================================
+field_with_parameters <- sim_data
+field_pars <- field_with_parameters$field_pars[[1]]
+field_sf <- field_with_parameters$field_sf[[1]]
+design_name <- field_with_parameters$design_name[[1]]
 
 gen_analysis_data <- function(field_with_parameters, weight_matrix = FALSE) {
   all_sim_data <-
@@ -12,7 +16,7 @@ gen_analysis_data <- function(field_with_parameters, weight_matrix = FALSE) {
   if (weight_matrix == TRUE) {
     all_sim_data <-
       all_sim_data %>%
-      mutate(weights_matrix = list(
+      mutate(weight_matrix = list(
         list(
           Wls_50 = gen_weight_matrix(reg_data = reg_data, cutoff = 50),
           Wls_100 = gen_weight_matrix(reg_data = reg_data, cutoff = 100)
@@ -33,6 +37,12 @@ gen_reg_data <- function(field_pars, field_sf, design_name) {
 
   # === load cell level data (coef, error) ===#
   field <- data.table(field_sf)
+
+  field_au_sf <-
+    field_sf %>%
+    group_by(aunit_id) %>%
+    summarise(geometry = st_union(geometry)) %>%
+    data.table()
 
   # /*+++++++++++++++++++++++++++++++++++
   #' # Define the levels of experimental input rate by simulation id
@@ -93,14 +103,15 @@ gen_reg_data <- function(field_pars, field_sf, design_name) {
     .[, yield_error := mean_det_yield * m_error] %>%
     .[, yield := det_yield + yield_error] %>%
     #* remove observations in the buffer zone
-    .[buffer == 0, ] %>%
+    # .[buffer == 0, ] %>%
     #* aggregate the data by analysis unit
     .[,
       lapply(.SD, mean),
-      by = .(sim, aunit_id, block_id),
+      by = .(sim, aunit_id, block_id, buffer),
       .SDcols = vars_to_summarize
     ] %>%
     .[, N2 := N^2] %>%
+    field_au_sf[., on = "aunit_id"] %>%
     nest_by_dt(by = "sim") %>%
     N_levels_data[., on = "sim"]
 
