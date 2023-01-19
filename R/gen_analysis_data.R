@@ -1,10 +1,10 @@
 # /*===========================================================
 #' # Generate analysis-ready data
 # /*===========================================================
-field_with_parameters <- sim_data
-field_pars <- field_with_parameters$field_pars[[1]]
-field_sf <- field_with_parameters$field_sf[[1]]
-design_name <- field_with_parameters$design_name[[1]]
+# field_with_parameters <- sim_data
+# field_pars <- field_with_parameters$field_pars[[1]]
+# field_sf <- field_with_parameters$field_sf[[1]]
+# design_name <- field_with_parameters$design_name[[1]]
 
 gen_analysis_data <- function(field_with_parameters, weight_matrix = FALSE) {
   all_sim_data <-
@@ -30,8 +30,9 @@ gen_analysis_data <- function(field_with_parameters, weight_matrix = FALSE) {
 # /*===========================================================
 #' # Supporting functions
 # /*===========================================================
-# field_sf <- field_with_parameters$field_sf[[2]]
-# field_pars <- field_with_parameters$field_pars[[2]]
+# field_with_parameters <- sim_data
+# field_sf <- field_with_parameters$field_sf[[1]]
+# field_pars <- field_with_parameters$field_pars[[1]]
 
 gen_reg_data <- function(field_pars, field_sf, design_name) {
 
@@ -107,7 +108,7 @@ gen_reg_data <- function(field_pars, field_sf, design_name) {
     #* aggregate the data by analysis unit
     .[,
       lapply(.SD, mean),
-      by = .(sim, aunit_id, block_id, buffer),
+      by = .(sim, aunit_id, buffer),
       .SDcols = vars_to_summarize
     ] %>%
     .[, N2 := N^2] %>%

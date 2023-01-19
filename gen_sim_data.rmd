@@ -22,8 +22,6 @@ library(stringr)
 library(ggplot2)
 library(tictoc)
 library(here)
-options(stringsAsFactors = FALSE)
-
 
 # === Set working directory ===#
 setwd(here())
@@ -60,7 +58,7 @@ sim_data <-
   #--- Add trial design layout ---#
   assign_trial_design(., design = "Latin Square Fixed 5") %>%
   #--- Generate true field parameters ---#
-  gen_field_parameters(., nsim = 100) %>%
+  gen_field_parameters(., nsim = 1) %>%
   #--- Create regression data and wright matrix ---#
   gen_analysis_data(., weight_matrix = FALSE)
 
