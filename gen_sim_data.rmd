@@ -55,12 +55,22 @@ sim_data <-
     # gstat_model = "Exp",
     gstat_model = "Sph"
   ) %>%
-  #--- Add trial design layout ---#
+  #--- add trial design layout ---#
   assign_trial_design(., design = "Latin Square Fixed 5") %>%
-  #--- Generate true field parameters ---#
-  gen_field_parameters(., nsim = 1) %>%
-  #--- Create regression data and wright matrix ---#
-  gen_analysis_data(., weight_matrix = FALSE)
+  #--- generate true field parameters ---#
+  gen_field_parameters(., nsim = 2) %>%
+  #--- generate trial design ---#
+  mutate(trial_design = list(
+    gen_trial_design(field, field_pars)
+  )) %>%
+  #--- generate regression data ---#
+  mutate(reg_data = list(
+    gen_reg_data(field_pars, field_sf, trial_design)
+  )) %>%
+  #--- create the weight matrix if necessary ---#
+  mutate(weight_matrix = list(
+    gen_weight_matrix(reg_data, cutoff = 50)
+  ))
 
 #* save the data
 saveRDS(sim_data, here("Shared/Data/all_sim_data.rds"))

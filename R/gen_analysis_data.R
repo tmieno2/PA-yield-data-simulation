@@ -10,7 +10,7 @@ gen_analysis_data <- function(field_with_parameters, weight_matrix = FALSE) {
   all_sim_data <-
     field_with_parameters %>%
     mutate(reg_data = list(
-      gen_reg_data(field_pars, field_sf, design_name)
+      gen_reg_data(field_pars, field_sf, trial_design)
     ))
 
   if (weight_matrix == TRUE) {
@@ -33,8 +33,9 @@ gen_analysis_data <- function(field_with_parameters, weight_matrix = FALSE) {
 # field_with_parameters <- sim_data
 # field_sf <- field_with_parameters$field_sf[[1]]
 # field_pars <- field_with_parameters$field_pars[[1]]
+# trial_design <- field_with_parameters$trial_design[[1]]
 
-gen_reg_data <- function(field_pars, field_sf, design_name) {
+gen_reg_data <- function(field_pars, field_sf, trial_design) {
 
   # === load cell level data (coef, error) ===#
   field <- data.table(field_sf)
@@ -45,46 +46,6 @@ gen_reg_data <- function(field_pars, field_sf, design_name) {
     summarise(geometry = st_union(geometry)) %>%
     data.table()
 
-  # /*+++++++++++++++++++++++++++++++++++
-  #' # Define the levels of experimental input rate by simulation id
-  # /*+++++++++++++++++++++++++++++++++++
-  N_levels_data <-
-    field_pars[, .(sim, Nk)] %>%
-    .[, .(N_levels = list(
-      seq(
-        max(min(Nk) - 50, 0),
-        max(Nk) + 30,
-        length = 5
-      ) %>%
-        round()
-    )), by = sim]
-
-  # /*+++++++++++++++++++++++++++++++++++
-  #' # Assign input rate
-  # /*+++++++++++++++++++++++++++++++++++
-  #* the number of blocks
-  block_num <- unique(field$block_id) %>% length()
-
-  #* assign N rates
-  n_assign_data <-
-    lapply(
-      field_pars[, sim] %>% unique(),
-      function(x) {
-
-        #* find the N_levels for the sim
-        N_levels <- N_levels_data[sim == x, N_levels][[1]]
-
-        #* assign N rates
-        assign_input_rate(
-          N_levels = N_levels,
-          block_num = block_num,
-          design = design_name
-        ) %>%
-          .[, sim := x]
-      }
-    ) %>%
-    rbindlist()
-
   vars_to_summarize <-
     names(field_pars) %>%
     .[!(. %in% c("sim", "cell_id", "m_error", "N_error"))] %>%
@@ -92,10 +53,10 @@ gen_reg_data <- function(field_pars, field_sf, design_name) {
 
   reg_data <-
     field[field_pars, on = "cell_id"] %>%
-    n_assign_data[., on = c("sim", "block_id", "plot_in_block_id")] %>%
+    trial_design[., on = c("sim", "block_id", "plot_in_block_id")] %>%
     #* add cell-level N application noise to target N
-    .[, meidan_det_N := median(N_tgt), by = sim] %>%
-    .[, N := N_tgt + meidan_det_N * N_error] %>%
+    .[, median_det_N := median(N_tgt), by = sim] %>%
+    .[, N := N_tgt + median_det_N * N_error] %>%
     .[N < 0, N := 0] %>%
     #* deterministic yield
     .[, det_yield := gen_yield_QP(b0, b1, b2, Nk, N)] %>%
