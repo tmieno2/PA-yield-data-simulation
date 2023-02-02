@@ -61,7 +61,7 @@ sim_data <-
   gen_field_parameters(., nsim = 2) %>%
   #--- generate trial design ---#
   mutate(trial_design = list(
-    gen_trial_design(field, field_pars)
+    gen_trial_design(field_sf, field_pars, design_name)
   )) %>%
   #--- generate regression data ---#
   mutate(reg_data = list(

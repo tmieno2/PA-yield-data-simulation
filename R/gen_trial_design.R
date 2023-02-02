@@ -2,7 +2,7 @@
 #' # Define the levels of experimental input rate by simulation id
 # /*+++++++++++++++++++++++++++++++++++
 
-gen_trial_design <- function(field, field_pars) {
+gen_trial_design <- function(field_sf, field_pars, design_name) {
   N_levels_data <-
     field_pars[, .(sim, Nk)] %>%
     .[, .(N_levels = list(
@@ -18,7 +18,7 @@ gen_trial_design <- function(field, field_pars) {
   #' # Assign input rate
   # /*+++++++++++++++++++++++++++++++++++
   #* the number of blocks
-  block_num <- unique(field$block_id) %>% length()
+  block_num <- unique(field_sf$block_id) %>% length()
 
   #* assign N rates
   n_assign_data <-

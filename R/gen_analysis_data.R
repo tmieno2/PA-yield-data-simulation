@@ -74,8 +74,7 @@ gen_reg_data <- function(field_pars, field_sf, trial_design) {
     ] %>%
     .[, N2 := N^2] %>%
     field_au_sf[., on = "aunit_id"] %>%
-    nest_by_dt(by = "sim") %>%
-    N_levels_data[., on = "sim"]
+    nest_by_dt(by = "sim")
 
   return(reg_data)
 }

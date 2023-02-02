@@ -22,15 +22,7 @@ assign_trial_design <- function(field_data, design = "Latin Square Fixed 5") {
     mutate(field_sf = list(
       left_join(field_sf, plot_block_id_data, by = "cell_id")
     )) %>%
-    dplyr::select(-plot_block_id_data) %>%
-    mutate(
-      data_file_name =
-        paste0(
-          stringr::str_replace_all(design_name, " ", ""),
-          "_", field_col, ".rds"
-        ) %>%
-          paste0("Shared/Data/", .)
-    )
+    dplyr::select(-plot_block_id_data)
 
   return(field_with_design)
 }
