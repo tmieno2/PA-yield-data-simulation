@@ -47,9 +47,9 @@ gen_field_pars <- function(sp_range, gstat_model, field_sf, nsim) {
     .[, sd_b := sd(Nk), by = sim] %>%
     .[, mean_b := mean(Nk), by = sim] %>%
     .[, p := pnorm(Nk, mean = mean_b, sd = sd_b)] %>%
-    .[, Nk := 75 + p * 150] %>%
+    .[, Nk := 100 + p * 100] %>%
     #--- add some fluctuations across fields ---#
-    .[, Nk_rand := 50 * runif(1), by = sim] %>%
+    .[, Nk_rand := 30 * runif(1), by = sim] %>%
     .[, Nk := Nk + Nk_rand] %>%
     .[, c("cell_id", "sim", "Nk")]
 

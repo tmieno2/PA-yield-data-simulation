@@ -38,6 +38,7 @@ fs::dir_ls(here("R"), full.names = TRUE) %>%
 # /*===========================================================
 # ! Define field and plot characteristics here
 
+
 sim_data <-
   gen_fields(
     plot_length = 12, # the length of a plot (in number of cells)
@@ -56,12 +57,12 @@ sim_data <-
     gstat_model = "Sph"
   ) %>%
   #--- add trial design layout ---#
-  assign_trial_design(., design = "Latin Square Fixed 5") %>%
+  assign_trial_design(., design = c("Latin Square Fixed 5", "Latin Square Fixed 6")) %>%
   #--- generate true field parameters ---#
   gen_field_parameters(., nsim = 2) %>%
   #--- generate trial design ---#
   mutate(trial_design = list(
-    gen_trial_design(field_sf, field_pars, design_name)
+    gen_trial_design(field_sf, field_pars, design_name, num_treatments)
   )) %>%
   #--- generate regression data ---#
   mutate(reg_data = list(
@@ -74,4 +75,21 @@ sim_data <-
 
 #* save the data
 saveRDS(sim_data, here("Shared/Data/all_sim_data.rds"))
+```
+
+
+# Sanity check
+
+```{r}
+i <- 2
+trial_design <- sim_data$trial_design[[i]] %>% .[sim == 1, ]
+field_sf <- sim_data$field_sf[[i]] %>% data.table()
+
+td_sf <-
+  trial_design[field_sf, on = c("block_id", "plot_in_block_id")] %>%
+  st_as_sf()
+
+ggplot(data = td_sf) +
+  geom_sf(aes(fill = factor(N_tgt))) +
+  scale_fill_viridis_d()
 ```

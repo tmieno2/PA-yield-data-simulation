@@ -37,7 +37,7 @@ add_errors_to_par <- function(par_name, scaler, new_var_name, cell_data, nsim, x
 library(magic) # rlatin()
 
 assign_input_rate <- function(N_levels, block_num, design) {
-  if (design == "Latin Square Fixed") {
+  if (design == "Latin Square Fixed 6") {
 
     # () Latin Square Fixed
     M.latin <- matrix(c(
@@ -307,6 +307,19 @@ gen_pars <- function(mean, psill, range, coef_name, gstat_model, xy, nsim) {
 #' block: block of plots
 
 # temp_design <- "Latin Square Fixed"
+# field_sf <- sim_data$field_sf[[1]]
+# plot_length <- sim_data$plot_length[[1]]
+# plot_width <- sim_data$plot_width[[1]]
+# cols_plot_in_block <- 5
+# rows_plot_in_block <- 5
+# cell_buffer <- sim_data$cell_buffer[[1]]
+
+# ggplot(field_sf) +
+#   geom_sf(aes(fill = aunit_id))
+
+# ggplot(st_as_sf(plot_block_id_data[1:600, ])) +
+#   geom_sf(aes(fill = factor(aunit_id))) +
+#   geom_sf(aes(color = factor(buffer)), fill = NA)
 
 gen_plot_block_ids <- function(field_sf, plot_length, plot_width, cols_plot_in_block, rows_plot_in_block, cell_buffer) {
   cols_cell_in_block <- plot_length * cols_plot_in_block
@@ -409,24 +422,23 @@ nest_by_dt <- function(dt, by) {
 # /*===========================================================
 #' # Trial Design
 # /*===========================================================
-make_design_layout <- function(plot_length, field_col) {
+add_design_layout <- function(plot_length, field_col) {
   design_layout_table <-
     tribble(
-      ~design_name, ~plot_length, ~cols_plot_in_block, ~rows_plot_in_block,
-      "Latin Square Fixed 5", plot_length, 5, 5,
-      "Latin Square Fixed 6", plot_length, 6, 6,
-      "Latin Square Random", plot_length, 6, 6,
-      "Latin Square Cascade", plot_length, 6, 6,
-      "Alternate Block", plot_length, 3, 6,
-      "Checkerboard", plot_length, 2, 3,
-      "Randomized Block", plot_length, 2, 3,
-      "Completely Random", plot_length, 1, 1,
-      "Fixed Strip Grad", field_col, 1, 12,
-      "Fixed Strip Fluc 1", field_col, 1, 6,
-      "Fixed Strip Fluc 2", field_col, 1, 6,
-      "Random Strip", field_col, 1, 6,
-      "Cascade Plot", plot_length, 12, 12,
-      "Wave", plot_length, 10, 10,
+      ~design_name, ~plot_length, ~cols_plot_in_block, ~rows_plot_in_block, ~num_treatments,
+      "Latin Square Fixed 5", plot_length, 5, 5, 5,
+      "Latin Square Fixed 6", plot_length, 6, 6, 6,
+      "Latin Square Random", plot_length, 6, 6, 6,
+      "Latin Square Cascade", plot_length, 6, 6, 6,
+      "Alternate Block", plot_length, 3, 6, 6,
+      "Checkerboard", plot_length, 2, 3, 6,
+      "Randomized Block", plot_length, 2, 3, 6,
+      "Completely Random", plot_length, 1, 1, 6,
+      "Fixed Strip Grad", field_col, 1, 12, 6,
+      "Fixed Strip Fluc 1", field_col, 1, 6, 6,
+      "Fixed Strip Fluc 2", field_col, 1, 6, 6,
+      "Random Strip", field_col, 1, 6, 6,
+      "Cascade Plot", plot_length, 12, 12, 6
     ) %>%
     data.table()
 

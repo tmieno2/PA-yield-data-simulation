@@ -1,15 +1,19 @@
 # /*+++++++++++++++++++++++++++++++++++
 #' # Define the levels of experimental input rate by simulation id
 # /*+++++++++++++++++++++++++++++++++++
+# field_sf <- sim_data$field_sf[[2]]
+# field_pars <- sim_data$field_pars[[2]]
+# design_name <- sim_data$design_name[[2]]
+# num_treatments <- sim_data$num_treatments[[2]]
 
-gen_trial_design <- function(field_sf, field_pars, design_name) {
+gen_trial_design <- function(field_sf, field_pars, design_name, num_treatments) {
   N_levels_data <-
     field_pars[, .(sim, Nk)] %>%
     .[, .(N_levels = list(
       seq(
-        max(min(Nk) - 50, 0),
-        max(Nk) + 30,
-        length = 5
+        max(min(Nk) - 60, 0),
+        max(Nk) + 60,
+        length = num_treatments
       ) %>%
         round()
     )), by = sim]
@@ -30,12 +34,14 @@ gen_trial_design <- function(field_sf, field_pars, design_name) {
         N_levels <- N_levels_data[sim == x, N_levels][[1]]
 
         #* assign N rates
-        assign_input_rate(
-          N_levels = N_levels,
-          block_num = block_num,
-          design = design_name
-        ) %>%
+        rate_design <-
+          assign_input_rate(
+            N_levels = N_levels,
+            block_num = block_num,
+            design = design_name
+          ) %>%
           .[, sim := x]
+        return(rate_design)
       }
     ) %>%
     rbindlist()
