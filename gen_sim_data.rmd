@@ -72,11 +72,26 @@ sim_data <-
   mutate(weight_matrix = list(
     gen_weight_matrix(reg_data, cutoff = 50)
   ))
-
-#* save the data
-saveRDS(sim_data, here("Shared/Data/all_sim_data.rds"))
 ```
 
+```{r}
+save_reg_data_sep <- function(data_file_path, keep_meta_only = FALSE) {
+  unnested_data <-
+    readRDS(data_file_path) %>%
+    unnest(reg_data) %>%
+    data.table()
+
+  lapply(
+    1:nrow(unnested_data),
+    function(x) {
+      saveRDS(
+        unnested_data[x, ],
+        paste0("Shared/Data/SimData/sim_data_", x, ".rds")
+      )
+    }
+  )
+}
+```
 
 # Sanity check
 

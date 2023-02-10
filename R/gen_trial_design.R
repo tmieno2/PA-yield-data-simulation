@@ -11,7 +11,7 @@ gen_trial_design <- function(field_sf, field_pars, design_name, num_treatments) 
     field_pars[, .(sim, Nk)] %>%
     .[, .(N_levels = list(
       seq(
-        max(min(Nk) - 60, 0),
+        max(min(Nk) - 80, 0),
         max(Nk) + 60,
         length = num_treatments
       ) %>%
