@@ -1,35 +1,13 @@
-# /*===========================================================
-#' # Generate field parameters for quadratic plateau production function
-# /*===========================================================
-gen_field_parameters <- function(field_with_design, nsim = 1000) {
-  field_parameters <-
-    field_with_design %>%
-    mutate(field_pars = list(
-      gen_field_pars(
-        sp_range = sp_range,
-        gstat_model = gstat_model,
-        field_sf = field_sf,
-        nsim = nsim
-      )
-    ))
-  return(field_parameters)
-}
-
-# /*+++++++++++++++++++++++++++++++++++
-#' ## Supporting functions
-# /*+++++++++++++++++++++++++++++++++++
-#* Generate a complete set of variable:
-#* Plateau, Nk, b0, b1, b2, yeld error, application error
-
-# sp_range <- 600
-# gstat_model <- "Sph"
-# nsim <- 10
-# field_sf <-
-#   readRDS(here("Data/field_with_design.rds")) %>%
-#   .$field_sf %>%
-#   .[[1]]
-
-gen_field_pars <- function(sp_range, gstat_model, field_sf, nsim) {
+#' Generate cell-level field parameters
+#'
+#' @param field_sf (sf)
+#' @param sp_range (numeric)
+#' @param gstat_model (character)
+#' @param nsim numeric
+#' @returns data.frame of input rate, block_id, and plot_id
+#' @import data.table
+#' @export
+gen_field_pars <- function(field_sf, sp_range, gstat_model, nsim) {
   xy <- data.table(field_sf)[, .(X, Y, cell_id)]
 
   # === Nk ===#
@@ -238,7 +216,16 @@ gen_field_pars <- function(sp_range, gstat_model, field_sf, nsim) {
 }
 
 
-
+#' Split a variable in an additive manner (internal)
+#'
+#' @param par_name (character)
+#' @param cell_data (data.frame)
+#' @param nsim (character)
+#' @param xy (sf)
+#' @param sp_range numeric
+#' @param gstat_model (character)
+#' @returns data.frame of input rate, block_id, and plot_id
+#' @import data.table
 split_par_additive <- function(par_name, cell_data, nsim, xy, sp_range, gstat_model) {
   vars <- c(par_name, "sim", "cell_id")
   temp_data <-
@@ -273,6 +260,16 @@ split_par_additive <- function(par_name, cell_data, nsim, xy, sp_range, gstat_mo
   return(return_data)
 }
 
+#' Split a variable in an additive manner (internal)
+#'
+#' @param par_name (character)
+#' @param cell_data (data.frame)
+#' @param nsim (character)
+#' @param xy (sf)
+#' @param sp_range numeric
+#' @param gstat_model (character)
+#' @returns data.frame of input rate, block_id, and plot_id
+#' @import data.table
 split_par_min <- function(par_name, cell_data, nsim, xy, sp_range, gstat_model) {
   vars <- c(par_name, "sim", "cell_id")
   temp_data <-
@@ -309,4 +306,85 @@ split_par_min <- function(par_name, cell_data, nsim, xy, sp_range, gstat_model) 
     )
 
   return(return_data)
+}
+
+#' Add measurement errors to a variable
+#'
+#' @param par_name (character)
+#' @param scalar (data.frame)
+#' @param new_var_name (character)
+#' @param cell_data (data.frame)
+#' @param nsim (numeric)
+#' @param xy (sf)
+#' @param sp_range numeric
+#' @param gstat_model (character)
+#' @returns data.frame of input rate, block_id, and plot_id
+#' @import data.table
+add_errors_to_par <- function(par_name, scaler, new_var_name, cell_data, nsim, xy, sp_range, gstat_model) {
+  vars <- c(par_name, "sim", "cell_id")
+
+  temp_data <-
+    data.table(cell_data)[, ..vars] %>%
+    setnames(par_name, "w_var")
+
+  return_data <-
+    gen_pars(
+      mean = 0,
+      psill = 1,
+      range = sp_range,
+      coef_name = "temp_var",
+      gstat_model = gstat_model,
+      xy = xy,
+      nsim = nsim
+    ) %>%
+    # >>> normalize <<<
+    .[, mean_temp_var := mean(temp_var), by = sim] %>%
+    .[, sd_temp_var := sd(temp_var), by = sim] %>%
+    .[, error := scaler * (pnorm(temp_var, mean = mean_temp_var, sd = sd_temp_var) - 0.5)] %>%
+    .[temp_data, on = c("sim", "cell_id")] %>%
+    .[, var_with_error := w_var * error] %>%
+    .[, .(sim, cell_id, var_with_error)] %>%
+    setnames("var_with_error", new_var_name)
+
+  return(return_data)
+}
+
+#' Generate parameters
+#'
+#' Generate parameters in a spatially correlated manner using random gaussian process
+#'
+#' @param mean (character)
+#' @param psill (data.frame)
+#' @param sp_range (character)
+#' @param gstat_model (data.frame)
+#' @param xy (sf)
+#' @param nsim (numeric)
+#' @returns data.frame
+#' @import data.table
+gen_pars <- function(mean, psill, sp_range, coef_name, gstat_model, xy, nsim) {
+  g_N <-
+    gstat::gstat(
+      formula = z ~ 1,
+      locations = ~ X + Y,
+      dummy = T,
+      beta = mean,
+      model = gstat::vgm(
+        psill = psill,
+        range = sp_range,
+        nugget = 0,
+        model = gstat_model
+      ),
+      nmax = 50
+    )
+
+  b_sim <-
+    predict(g_N, newdata = xy, nsim = nsim) %>%
+    data.table() %>%
+    data.table::melt(id.vars = c("X", "Y")) %>%
+    data.table::setnames(c("variable", "value"), c("sim", coef_name)) %>%
+    .[, sim := as.numeric(gsub("sim", "", sim))] %>%
+    xy[., on = c("X", "Y")] %>%
+    .[, c("cell_id", "sim", "X", "Y", coef_name), with = FALSE]
+
+  return(b_sim)
 }

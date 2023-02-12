@@ -51,22 +51,26 @@ sim_data <-
     # field_col = c(36, 72, 144), # the number of cell columns
     field_col = 144, # the number of cell columns
     #* how tall the field is
-    field_row = 72, # the number of row columns
-    sp_range = c(600),
-    # gstat_model = "Exp",
-    gstat_model = "Sph"
+    field_row = 72 # the number of row columns
   ) %>%
   #--- add trial design layout ---#
   assign_trial_design(., design = c("Latin Square Fixed 5", "Latin Square Fixed 6")) %>%
   #--- generate true field parameters ---#
-  gen_field_parameters(., nsim = 2) %>%
+  mutate(field_pars = list(
+    gen_field_parameters(
+      field_sf,
+      sp_range = 600,
+      gstat_model = "Sph",
+      nsim = 2
+    )
+  )) %>%
   #--- generate trial design ---#
   mutate(trial_design = list(
     gen_trial_design(field_sf, field_pars, design_name, num_treatments)
   )) %>%
   #--- generate regression data ---#
   mutate(reg_data = list(
-    gen_reg_data(field_pars, field_sf, trial_design)
+    gen_analysis_data(field_pars, field_sf, trial_design)
   )) %>%
   #--- create the weight matrix if necessary ---#
   mutate(weight_matrix = list(

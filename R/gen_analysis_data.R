@@ -1,49 +1,22 @@
-# /*===========================================================
-#' # Generate analysis-ready data
-# /*===========================================================
-# field_with_parameters <- sim_data
-# field_pars <- field_with_parameters$field_pars[[1]]
-# field_sf <- field_with_parameters$field_sf[[1]]
-# design_name <- field_with_parameters$design_name[[1]]
-
-gen_analysis_data <- function(field_with_parameters, weight_matrix = FALSE) {
-  all_sim_data <-
-    field_with_parameters %>%
-    mutate(reg_data = list(
-      gen_reg_data(field_pars, field_sf, trial_design)
-    ))
-
-  if (weight_matrix == TRUE) {
-    all_sim_data <-
-      all_sim_data %>%
-      mutate(weight_matrix = list(
-        list(
-          Wls_50 = gen_weight_matrix(reg_data = reg_data, cutoff = 50),
-          Wls_100 = gen_weight_matrix(reg_data = reg_data, cutoff = 100)
-        )
-      ))
-  }
-
-  return(all_sim_data)
-}
-
-# /*===========================================================
-#' # Supporting functions
-# /*===========================================================
-# field_with_parameters <- sim_data
-# field_sf <- field_with_parameters$field_sf[[1]]
-# field_pars <- field_with_parameters$field_pars[[1]]
-# trial_design <- field_with_parameters$trial_design[[1]]
-
-gen_reg_data <- function(field_pars, field_sf, trial_design) {
+#' Generate analysis-ready data
+#'
+#' Generate analysis-ready data from the raw cell-level data by aggregating data by analysis unit (aunit_id)
+#'
+#' @param field_pars (data.frame)
+#' @param field_sf (data.frame)
+#' @param trial_design (data.frame)
+#' @returns data.frame of input rate, block_id, and plot_id
+#' @import data.table
+#' @export
+gen_analysis_data <- function(field_pars, field_sf, trial_design) {
 
   # === load cell level data (coef, error) ===#
   field <- data.table(field_sf)
 
   field_au_sf <-
     field_sf %>%
-    group_by(aunit_id) %>%
-    summarise(geometry = st_union(geometry)) %>%
+    dplyr::group_by(aunit_id) %>%
+    dplyr::summarise(geometry = sf::st_union(geometry)) %>%
     data.table()
 
   vars_to_summarize <-
@@ -79,27 +52,36 @@ gen_reg_data <- function(field_pars, field_sf, trial_design) {
   return(reg_data)
 }
 
+#' Generate yield
+#'
+#' Generate yield according to quadratic-plateau function
+#'
+#' @param b0 (numeric)
+#' @param b1 (numeric)
+#' @param b2 (numeric)
+#' @param Nk (numeric)
+#' @param N (numeric)
+#' @returns (numeric) yield values
+#' @import data.table
+#' @export
+gen_yield_QP <- function(b0, b1, b2, Nk, N) {
+  yield <- (N < Nk) * (b0 + b1 * N + b2 * N^2) + (N >= Nk) * (b0 + b1 * Nk + b2 * Nk^2)
+  return(yield)
+}
 
-gen_weight_matrix <- function(reg_data, cutoff) {
-
-  # === load regression data ===#
-  dt <- reg_data$data[[1]]
-
-  # === distance matrix ===#
-  D <- matrix(NA, nrow(dt), nrow(dt))
-  for (i in 1:nrow(dt)) {
-    for (j in 1:nrow(dt)) {
-      D[i, j] <- sqrt((dt$X[i] - dt$X[j])^2 +
-        (dt$Y[i] - dt$Y[j])^2)
-    }
-  }
-
-  # === inverse distance weights matrix ===#
-  W <- 1 / D^2 # inverse distance
-  W[D > cutoff] <- 0 # cut off distance
-  diag(W) <- 0
-  W <- W / rowSums(W) # row-standardize
-  Wls <- mat2listw(W) # "listw" object
-
-  return(Wls)
+#' Generate yield
+#'
+#' Generate yield according to quadratic function
+#'
+#' @param b0 (numeric)
+#' @param b1 (numeric)
+#' @param b2 (numeric)
+#' @param Nk (numeric)
+#' @param N (numeric)
+#' @returns (numeric) yield values
+#' @import data.table
+#' @export
+gen_yield_QD <- function(b0, b1, b2, N) {
+  yield <- b0 + b1 * N + b2 * N^2
+  return(yield)
 }
