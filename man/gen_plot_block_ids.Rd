@@ -25,8 +25,6 @@ gen_plot_block_ids(
 \item{rows_plot_in_block}{numeric}
 
 \item{cell_buffer}{numeric}
-
-\item{design}{character (design name)}
 }
 \value{
 data.frame

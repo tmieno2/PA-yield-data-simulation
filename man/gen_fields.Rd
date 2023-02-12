@@ -12,9 +12,7 @@ gen_fields(
   aunit_width = 3,
   cell = 6,
   field_col = 144,
-  field_row = 72,
-  sp_range = 600,
-  gstat_model = "Sph"
+  field_row = 72
 )
 }
 \arguments{
@@ -33,10 +31,6 @@ gen_fields(
 \item{field_col}{= 144 # the number of cell columns (determine how wide the field is)}
 
 \item{field_row}{= 72, # the number of row columns (determine how tall the field is)}
-
-\item{sp_range}{= c(600),}
-
-\item{gstat_model}{= "Sph"}
 }
 \value{
 data.frame where field_sf column holds the created field as an sf object

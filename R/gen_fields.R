@@ -37,9 +37,7 @@ gen_fields <- function(plot_length = 12, # the length of a plot (in number of ce
       #* how wide the field is
       field_col = field_col, # the number of cell columns
       #* how tall the field is
-      field_row = field_row, # the number of row columns
-      sp_range = sp_range,
-      gstat_model = gstat_model
+      field_row = field_row # the number of row columns
     ) %>%
     dplyr::rowwise() %>%
     dplyr::mutate(field_sf = list(

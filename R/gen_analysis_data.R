@@ -76,7 +76,6 @@ gen_yield_QP <- function(b0, b1, b2, Nk, N) {
 #' @param b0 (numeric)
 #' @param b1 (numeric)
 #' @param b2 (numeric)
-#' @param Nk (numeric)
 #' @param N (numeric)
 #' @returns (numeric) yield values
 #' @import data.table

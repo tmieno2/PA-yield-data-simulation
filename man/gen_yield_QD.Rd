@@ -14,8 +14,6 @@ gen_yield_QD(b0, b1, b2, N)
 \item{b2}{(numeric)}
 
 \item{N}{(numeric)}
-
-\item{Nk}{(numeric)}
 }
 \value{
 (numeric) yield values

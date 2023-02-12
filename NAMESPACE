@@ -3,6 +3,7 @@
 export("%>%")
 export(assign_trial_design)
 export(gen_analysis_data)
+export(gen_field_parameters)
 export(gen_fields)
 export(gen_trial_design)
 export(gen_weight_matrix)

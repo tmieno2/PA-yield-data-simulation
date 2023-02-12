@@ -7,7 +7,7 @@
 #' @returns data.frame of input rate, block_id, and plot_id
 #' @import data.table
 #' @export
-gen_field_pars <- function(field_sf, sp_range, gstat_model, nsim) {
+gen_field_parameters <- function(field_sf, sp_range, gstat_model, nsim) {
   xy <- data.table(field_sf)[, .(X, Y, cell_id)]
 
   # === Nk ===#
@@ -130,22 +130,22 @@ gen_field_pars <- function(field_sf, sp_range, gstat_model, nsim) {
     .[m_error_data, on = c("sim", "cell_id")] %>%
     .[N_error_data, on = c("sim", "cell_id")]
 
-  # /*+++++++++++++++++++++++++++++++++++
-  #' ## Splitting parameters
-  # /*+++++++++++++++++++++++++++++++++++
+  #* +++++++++++++++++++++++++++++++++++
+  #* Splitting parameters
+  #* +++++++++++++++++++++++++++++++++++
 
   cell_data <-
     cell_data %>%
-    # /*---------------------
-    #' ### split b0
-    # /*---------------------
+    #* ---------------------
+    #* split b0
+    #* ---------------------
     #* split b0 (additive): b0_1 and b0_2
     split_par_additive("b0", ., nsim, xy, sp_range, gstat_model)[., on = c("sim", "cell_id")] %>%
     # .[, b0_1_sq := 1 + b0_1 ^ 2] %>%
     # .[, b0_2_sqrt := sqrt(b0_1)] %>%
-    # /*---------------------
-    #' ### Split plateau
-    # /*---------------------
+    #* ---------------------
+    #* Split plateau
+    #* ---------------------
     #* split plateau (min): plateau_1 and plateau_2
     split_par_min("plateau", ., nsim, xy, sp_range, gstat_model)[., on = c("sim", "cell_id")] %>%
     #* split plateau_1 (min): plateau_1_1 and plateau_1_2
@@ -156,27 +156,27 @@ gen_field_pars <- function(field_sf, sp_range, gstat_model, nsim) {
     # .[, plateau_1_2_sqrt := sqrt(b0_1)] %>%
     # .[, plateau_2_1_inv := 1 / plateau_2_1] %>%
     # .[, plateau_2_2 := sqrt(b0_1)] %>%
-    # /*---------------------
-    #' ### Split Nk
-    # /*---------------------
+    #* ---------------------
+    #* Split Nk
+    #* ---------------------
     #* split Nk (additive): Nk_1 and Nk_2
     split_par_additive("Nk", ., nsim, xy, sp_range, gstat_model)[., on = c("sim", "cell_id")] %>%
     #* split Nk_1 (additive): Nk_1_1 and Nk_1_2
     split_par_additive("Nk_1", ., nsim, xy, sp_range, gstat_model)[., on = c("sim", "cell_id")] %>%
     #* split Nk_2 (additive): Nk_2_1 and Nk_2_2
     split_par_additive("Nk_2", ., nsim, xy, sp_range, gstat_model)[., on = c("sim", "cell_id")] %>%
-    # /*---------------------
-    #' ### Split b1
-    # /*---------------------
+    #* ---------------------
+    #* Split b1
+    #* ---------------------
     #* split b1 (additive): b1_1 and b1_2
     split_par_additive("b1", ., nsim, xy, sp_range, gstat_model)[., on = c("sim", "cell_id")] %>%
     #* split b1_1 (additive): b1_1_1 and b1_1_2
     split_par_additive("b1_1", ., nsim, xy, sp_range, gstat_model)[., on = c("sim", "cell_id")] %>%
     #* split b1_2 (additive): b1_2_1 and b1_2_2
     split_par_additive("b1_2", ., nsim, xy, sp_range, gstat_model)[., on = c("sim", "cell_id")] %>%
-    # /*---------------------
-    #' ### Split b2
-    # /*---------------------
+    #* ---------------------
+    #* Split b2
+    #* ---------------------
     #* split b2 (additive): b2_1 and b2_2
     split_par_additive("b2", ., nsim, xy, sp_range, gstat_model)[., on = c("sim", "cell_id")] %>%
     #* split b2_1 (additive): b2_1_1 and b2_1_2
@@ -186,9 +186,9 @@ gen_field_pars <- function(field_sf, sp_range, gstat_model, nsim) {
 
   # identical(cell_data[, pmin(b1_1, b1_2)], cell_data[, b1])
 
-  # /*+++++++++++++++++++++++++++++++++++
-  #' ## Create irrelevant parameters
-  # /*+++++++++++++++++++++++++++++++++++
+  #* +++++++++++++++++++++++++++++++++++
+  #* Create irrelevant parameters
+  #* +++++++++++++++++++++++++++++++++++
   cell_data <-
     cell_data %>%
     #* theta_plateau_1
@@ -311,7 +311,7 @@ split_par_min <- function(par_name, cell_data, nsim, xy, sp_range, gstat_model) 
 #' Add measurement errors to a variable
 #'
 #' @param par_name (character)
-#' @param scalar (data.frame)
+#' @param scaler (data.frame)
 #' @param new_var_name (character)
 #' @param cell_data (data.frame)
 #' @param nsim (numeric)
@@ -355,13 +355,14 @@ add_errors_to_par <- function(par_name, scaler, new_var_name, cell_data, nsim, x
 #'
 #' @param mean (character)
 #' @param psill (data.frame)
-#' @param sp_range (character)
+#' @param range (numeric)
+#' @param coef_name (character)
 #' @param gstat_model (data.frame)
 #' @param xy (sf)
 #' @param nsim (numeric)
 #' @returns data.frame
 #' @import data.table
-gen_pars <- function(mean, psill, sp_range, coef_name, gstat_model, xy, nsim) {
+gen_pars <- function(mean, psill, range, coef_name, gstat_model, xy, nsim) {
   g_N <-
     gstat::gstat(
       formula = z ~ 1,
@@ -370,7 +371,7 @@ gen_pars <- function(mean, psill, sp_range, coef_name, gstat_model, xy, nsim) {
       beta = mean,
       model = gstat::vgm(
         psill = psill,
-        range = sp_range,
+        range = range,
         nugget = 0,
         model = gstat_model
       ),

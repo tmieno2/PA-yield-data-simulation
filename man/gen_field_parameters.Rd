@@ -2,10 +2,22 @@
 % Please edit documentation in R/gen_field_parameters.R
 \name{gen_field_parameters}
 \alias{gen_field_parameters}
-\title{# Generate field parameters for quadratic plateau production function}
+\title{Generate cell-level field parameters}
 \usage{
-gen_field_parameters(field_with_design, nsim = 1000)
+gen_field_parameters(field_sf, sp_range, gstat_model, nsim)
+}
+\arguments{
+\item{field_sf}{(sf)}
+
+\item{sp_range}{(numeric)}
+
+\item{gstat_model}{(character)}
+
+\item{nsim}{numeric}
+}
+\value{
+data.frame of input rate, block_id, and plot_id
 }
 \description{
-# Generate field parameters for quadratic plateau production function
+Generate cell-level field parameters
 }
