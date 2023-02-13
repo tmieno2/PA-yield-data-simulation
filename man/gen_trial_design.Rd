@@ -4,7 +4,14 @@
 \alias{gen_trial_design}
 \title{Define the levels of experimental input rate}
 \usage{
-gen_trial_design(field_sf, field_pars, design_name, num_treatments)
+gen_trial_design(
+  field_sf,
+  field_pars,
+  design_name,
+  num_treatments,
+  Nk_minus = 80,
+  Nk_plus = 60
+)
 }
 \arguments{
 \item{field_sf}{(sf)}
@@ -14,6 +21,10 @@ gen_trial_design(field_sf, field_pars, design_name, num_treatments)
 \item{design_name}{(data.frame)}
 
 \item{num_treatments}{numeric}
+
+\item{Nk_minus}{numeric}
+
+\item{Nk_plus}{numeric}
 }
 \value{
 data.frame of input rate, block_id, and plot_id

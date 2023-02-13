@@ -6,16 +6,18 @@
 #' @param field_pars (data.frame)
 #' @param design_name (data.frame)
 #' @param num_treatments numeric
+#' @param Nk_minus numeric
+#' @param Nk_plus numeric
 #' @returns data.frame of input rate, block_id, and plot_id
 #' @import data.table
 #' @export
-gen_trial_design <- function(field_sf, field_pars, design_name, num_treatments) {
+gen_trial_design <- function(field_sf, field_pars, design_name, num_treatments, Nk_minus = 80, Nk_plus = 60) {
   N_levels_data <-
     field_pars[, .(sim, Nk)] %>%
     .[, .(N_levels = list(
       seq(
-        max(min(Nk) - 80, 0),
-        max(Nk) + 60,
+        max(min(Nk) - Nk_minus, 0),
+        max(Nk) + Nk_plus,
         length = num_treatments
       ) %>%
         round()
