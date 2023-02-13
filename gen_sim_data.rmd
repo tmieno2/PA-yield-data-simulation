@@ -37,8 +37,6 @@ fs::dir_ls(here("R"), full.names = TRUE) %>%
 #' # Create a field
 # /*===========================================================
 # ! Define field and plot characteristics here
-
-
 sim_data <-
   gen_fields(
     plot_length = 12, # the length of a plot (in number of cells)
@@ -70,7 +68,7 @@ sim_data <-
   )) %>%
   #--- generate regression data ---#
   mutate(reg_data = list(
-    gen_analysis_data(field_pars, field_sf, trial_design)
+    gen_analysis_data(field_pars, field_sf, field_au_sf, trial_design)
   )) %>%
   #--- create the weight matrix if necessary ---#
   mutate(weight_matrix = list(

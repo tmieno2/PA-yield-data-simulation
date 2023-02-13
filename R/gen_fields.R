@@ -23,7 +23,7 @@ gen_fields <- function(plot_length = 12, # the length of a plot (in number of ce
                        field_col = 144, # the number of cell columns
                        #* how tall the field is
                        field_row = 72 # the number of row columns
-                       ) {
+) {
   field_data <-
     # ! This is where you set the experiment parameters
     data.table::CJ(
@@ -49,6 +49,12 @@ gen_fields <- function(plot_length = 12, # the length of a plot (in number of ce
         cell = cell,
         cell_buffer = cell_buffer
       )
+    )) %>%
+    mutate(field_au_sf = list(
+      field_sf %>%
+        dplyr::group_by(aunit_id) %>%
+        dplyr::summarise(geometry = sf::st_union(geometry)) %>%
+        data.table()
     )) %>%
     #* assign experiment setting ID
     dplyr::ungroup() %>%
@@ -107,5 +113,5 @@ make_field <- function(field_col, field_row, aunit_length, aunit_width, cell, ce
     #* keep only the relevant variables
     .[, c("X", "Y", "col_id", "row_id", "cell_id", "aunit_id")]
 
-    return(field_sf)
+  return(field_sf)
 }

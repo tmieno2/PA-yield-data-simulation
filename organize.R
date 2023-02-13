@@ -13,3 +13,5 @@ usethis::use_pipe() # can use %>% after this
 usethis::use_mit_license("Taro Mieno")
 
 devtools::document() # regenerate documents reflecting the changes and apply load_all()
+
+usethis::use_data_raw()

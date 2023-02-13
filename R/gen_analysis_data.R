@@ -3,21 +3,16 @@
 #' Generate analysis-ready data from the raw cell-level data by aggregating data by analysis unit (aunit_id)
 #'
 #' @param field_pars (data.frame)
-#' @param field_sf (data.frame)
+#' @param field_sf (sf)
+#' @param field_au_sf (sf)
 #' @param trial_design (data.frame)
 #' @returns data.frame of input rate, block_id, and plot_id
 #' @import data.table
 #' @export
-gen_analysis_data <- function(field_pars, field_sf, trial_design) {
+gen_analysis_data <- function(field_pars, field_sf, field_au_sf, trial_design) {
 
   # === load cell level data (coef, error) ===#
   field <- data.table(field_sf)
-
-  field_au_sf <-
-    field_sf %>%
-    dplyr::group_by(aunit_id) %>%
-    dplyr::summarise(geometry = sf::st_union(geometry)) %>%
-    data.table()
 
   vars_to_summarize <-
     names(field_pars) %>%
@@ -26,6 +21,7 @@ gen_analysis_data <- function(field_pars, field_sf, trial_design) {
 
   reg_data <-
     field[field_pars, on = "cell_id"] %>%
+    .[buffer == 0, ] %>%
     trial_design[., on = c("sim", "block_id", "plot_in_block_id")] %>%
     #* add cell-level N application noise to target N
     .[, median_det_N := median(N_tgt), by = sim] %>%
@@ -42,11 +38,11 @@ gen_analysis_data <- function(field_pars, field_sf, trial_design) {
     #* aggregate the data by analysis unit
     .[,
       lapply(.SD, mean),
-      by = .(sim, aunit_id, buffer),
+      by = .(sim, aunit_id),
       .SDcols = vars_to_summarize
     ] %>%
     .[, N2 := N^2] %>%
-    field_au_sf[., on = "aunit_id"] %>%
+    data.table(field_au_sf)[., on = "aunit_id"] %>%
     nest_by_dt(by = "sim")
 
   return(reg_data)

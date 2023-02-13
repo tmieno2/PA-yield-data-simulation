@@ -4,12 +4,14 @@
 \alias{gen_analysis_data}
 \title{Generate analysis-ready data}
 \usage{
-gen_analysis_data(field_pars, field_sf, trial_design)
+gen_analysis_data(field_pars, field_sf, field_au_sf, trial_design)
 }
 \arguments{
 \item{field_pars}{(data.frame)}
 
-\item{field_sf}{(data.frame)}
+\item{field_sf}{(sf)}
+
+\item{field_au_sf}{(sf)}
 
 \item{trial_design}{(data.frame)}
 }
